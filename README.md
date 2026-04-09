@@ -19,9 +19,8 @@ from matplotlib.animation import FuncAnimation
 from dataclasses import dataclass
 from IPython.display import HTML
 
-# =============================================================================
 # CONFIG
-# =============================================================================
+
 @dataclass
 class Config:
     episodes: int = 20000
@@ -34,9 +33,8 @@ class Config:
 
 CONFIG = Config()
 
-# =============================================================================
 # ENVIRONMENT
-# =============================================================================
+
 class TaxiEnv:
     def __init__(self):
         self.grid_size = 6
@@ -104,9 +102,8 @@ class TaxiEnv:
         
         return self._get_state(), reward, done
 
-# =============================================================================
 # AGENT
-# =============================================================================
+
 class QAgent:
     def __init__(self, env):
         self.env = env
@@ -153,9 +150,8 @@ class QAgent:
                 break
         return path
 
-# =============================================================================
 # GRAFİK & ANIMASYON
-# =============================================================================
+
 def plot_rewards(rewards):
     plt.figure(figsize=(10,4))
     plt.plot(rewards, alpha=0.4)
@@ -194,9 +190,8 @@ def animate(env, path):
     plt.close()
     return HTML(anim.to_jshtml())
 
-# =============================================================================
 # RUN
-# =============================================================================
+
 env = TaxiEnv()
 agent = QAgent(env)
 
