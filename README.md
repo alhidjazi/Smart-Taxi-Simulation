@@ -1,204 +1,120 @@
-# 🚕 Smart Taxi Simulation with Q-Learning and Animation 
-This repository contains a Python implementation of a Smart Taxi environment with Q-Learning, visualized using Matplotlib animations. The taxi learns to pick up passengers and drop them off at their destinations while avoiding obstacles.
+🚖 Taxi-RL Pro: Reinforcement Learning Simulation Dashboard
 
-# 📝 Features
-6x6 grid environment with 6 predefined passenger locations: R, G, Y, B, K, L
-Obstacles are placed in the grid to make navigation more challenging
-6 actions: south, north, east, west, pickup, dropoff
-Q-Learning agent for training the taxi
-Training visualization: Reward curves and moving taxi animation
+📌 Proje Açıklaması
 
+Taxi-RL Pro, Q-Learning algoritması kullanılarak geliştirilmiş bir Reinforcement Learning (Pekiştirmeli Öğrenme) simülasyonudur. Bu proje, bir taksinin yolcuyu alıp hedef noktaya en verimli şekilde ulaştırmasını öğrenmesini sağlar.
 
+Proje; eğitim süreci, performans analizi ve test simülasyonlarını hem görsel hem de metriksel olarak sunan profesyonel bir kontrol paneli içerir.
 
-!pip install numpy matplotlib -q
+🚀 Özellikler
+📊 Performans Dashboard'u
+Eğitim özeti (epsilon, alpha, toplam bölüm)
+Test sonuçları tablosu
+📈 Grafik Analizi
+Ödül yakınsaması (reward convergence)
+Adım sayısı optimizasyonu (efficiency trend)
+🧠 Q-Learning Algoritması
+Durum-aksiyon tablosu (Q-table)
+Epsilon-greedy stratejisi
+🧪 Test Simülasyonu
+5 farklı test turu
+Gerçek zamanlı ASCII grid animasyonu
+🎨 Terminal UI
+Renkli ve dinamik çıktı
+Canlı güncellenen grid yapısı
+#----------------------------#
 
 import numpy as np
 import random
+import time
+import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from dataclasses import dataclass
-from IPython.display import HTML
+from IPython.display import clear_output
 
-# CONFIG
 
-@dataclass
-class Config:
-    episodes: int = 20000
-    max_steps: int = 50
-    alpha: float = 0.1
-    gamma: float = 0.95
-    epsilon: float = 1.0
-    epsilon_min: float = 0.05
-    epsilon_decay: float = 0.9995
-
-CONFIG = Config()
-
-# ENVIRONMENT
-
-class TaxiEnv:
-    def __init__(self):
-        self.grid_size = 6
-        self.locs = [(0,0), (0,5), (5,0), (5,4), (2,2), (3,1)]
-        self.loc_names = ['R','G','Y','B','K','L']
-        
-        # Engeller
-        self.obstacles = [(1,1),(2,3),(3,3),(4,2)]
-        
-        # State space: taxi_pos(36) * passenger(6) * dest(6) * in_taxi(2) = 2592
-        self.state_space = 36*6*6*2
-        self.action_space = 6
-        
-        self.reset()
+    def show_pro_dashboard(history_rewards, history_steps, test_results):
+    clear_output(wait=True)
     
-    def reset(self):
-        self.taxi_pos = [random.randint(0,5), random.randint(0,5)]
-        while tuple(self.taxi_pos) in self.obstacles:
-            self.taxi_pos = [random.randint(0,5), random.randint(0,5)]
-        
-        self.passenger = random.randint(0,5)
-        self.dest = random.randint(0,5)
-        while self.dest == self.passenger:
-            self.dest = random.randint(0,5)
-        
-        self.in_taxi = False
-        return self._get_state()
+    print("\033[1;36m" + "="*65)
+    print("      TAXI-RL PRO: PERFORMANS VE ANALİZ KONTROL PANELİ")
+    print("="*65 + "\033[0m")
     
-    def _get_state(self):
-        taxi = self.taxi_pos[0]*self.grid_size + self.taxi_pos[1]  # 0..35
-        in_taxi = 1 if self.in_taxi else 0
-        passenger = 0 if self.in_taxi else self.passenger       # 0..5
-        dest = self.dest                                      # 0..5
-        # State encoding
-        state = taxi*6*6*2 + passenger*6*2 + dest*2 + in_taxi
-        return state
+    # Genel Eğitim Özeti (Tablo 1)
+    report_data = {
+        "Eğitim Metriği": ["Toplam Bölüm", "Epsilon Final", "Öğrenme Oranı (Alpha)", "En İyi Tur"],
+        "Değer": [len(history_rewards), round(epsilon, 4), alpha, f"{min(history_steps)} Adım"]
+    }
+    print("\n\033[1m[EĞİTİM ÖZETİ]\033[0m")
+    print(pd.DataFrame(report_data).to_string(index=False))
     
-    def step(self, action):
-        reward = -1
-        done = False
-        
-        moves = [(1,0),(-1,0),(0,1),(0,-1)]  # south, north, east, west
-        
-        if action < 4:
-            dr, dc = moves[action]
-            nr, nc = self.taxi_pos[0]+dr, self.taxi_pos[1]+dc
-            if 0 <= nr < self.grid_size and 0 <= nc < self.grid_size and (nr,nc) not in self.obstacles:
-                self.taxi_pos = [nr,nc]
-            else:
-                reward = -5
-        
-        elif action == 4:  # pickup
-            if not self.in_taxi and self.taxi_pos==list(self.locs[self.passenger]):
-                self.in_taxi = True
-                reward = 20
-            else:
-                reward = -10
-        
-        elif action == 5:  # dropoff
-            if self.in_taxi and self.taxi_pos==list(self.locs[self.dest]):
-                reward = 100
-                done = True
-            else:
-                reward = -10
-        
-        return self._get_state(), reward, done
-
-# AGENT
-
-class QAgent:
-    def __init__(self, env):
-        self.env = env
-        self.q_table = np.zeros((env.state_space, env.action_space))
+    # Test Sürüşü Detayları (Tablo 2)
+    print("\n\033[1m[5 TUR TEST SONUÇLARI]\033[0m")
+    test_df = pd.DataFrame(test_results)
+    print(test_df.to_string(index=False))
     
-    def train(self):
-        rewards = []
-        for ep in range(CONFIG.episodes):
-            state = self.env.reset()
-            total_reward = 0
-            for _ in range(CONFIG.max_steps):
-                if random.random() < CONFIG.epsilon:
-                    action = random.randint(0,5)
-                else:
-                    action = np.argmax(self.q_table[state])
-                
-                next_state, reward, done = self.env.step(action)
-                
-                # Q-learning update
-                self.q_table[state, action] += CONFIG.alpha * (
-                    reward + CONFIG.gamma*np.max(self.q_table[next_state]) - self.q_table[state,action]
-                )
-                
-                state = next_state
-                total_reward += reward
-                if done:
-                    break
-            
-            CONFIG.epsilon = max(CONFIG.epsilon_min, CONFIG.epsilon*CONFIG.epsilon_decay)
-            rewards.append(total_reward)
-            
-            if ep % 5000 == 0:
-                print(f"Episode {ep} | Avg Reward: {np.mean(rewards[-100:]):.2f}")
-        return rewards
+    print("\n" + "-"*65)
+
+    # Profesyonel Grafikler
+    plt.style.use('seaborn-v0_8-darkgrid')
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 6))
     
-    def test(self):
-        state = self.env.reset()
-        path = []
-        for _ in range(CONFIG.max_steps):
-            path.append(tuple(self.env.taxi_pos))
-            action = np.argmax(self.q_table[state])
-            state, _, done = self.env.step(action)
-            if done:
-                break
-        return path
+    # Grafik 1: Ödül Yakınsaması
+    smoothed_r = pd.Series(history_rewards).rolling(window=100).mean()
+    ax1.plot(history_rewards, color='limegreen', alpha=0.15, label='Ham Veri')
+    ax1.plot(smoothed_r, color='darkgreen', linewidth=2.5, label='Eğilim (100 Bölüm Ort.)')
+    ax1.set_title("Öğrenme Stabilitesi: Kümülatif Ödül", fontsize=14, fontweight='bold')
+    ax1.set_xlabel("Bölüm"); ax1.set_ylabel("Toplam Ödül")
+    ax1.legend()
 
-# GRAFİK & ANIMASYON
+    # Grafik 2: Operasyonel Hız
+    smoothed_s = pd.Series(history_steps).rolling(window=100).mean()
+    ax2.plot(history_steps, color='salmon', alpha=0.15, label='Ham Veri')
+    ax2.plot(smoothed_s, color='darkred', linewidth=2.5, label='Hız Eğilimi (100 Bölüm Ort.)')
+    ax2.set_title("Operasyonel Verimlilik: Adım Sayısı", fontsize=14, fontweight='bold')
+    ax2.set_xlabel("Bölüm"); ax2.set_ylabel("Adım Sayısı")
+    ax2.set_ylim(0, 110)
+    ax2.legend()
 
-def plot_rewards(rewards):
-    plt.figure(figsize=(10,4))
-    plt.plot(rewards, alpha=0.4)
-    avg = np.convolve(rewards, np.ones(100)/100, mode='valid')
-    plt.plot(avg)
-    plt.title("Training Performance")
-    plt.grid()
+    plt.tight_layout()
     plt.show()
 
-def animate(env, path):
-    fig, ax = plt.subplots(figsize=(6,6))
-    ax.set_xlim(-0.5, env.grid_size-0.5)
-    ax.set_ylim(-0.5, env.grid_size-0.5)
-    ax.set_aspect('equal')
-    ax.grid(True)
-    
-    # Engeller
-    for r,c in env.obstacles:
-        ax.add_patch(plt.Rectangle((c-0.5, env.grid_size-1-r-0.5),1,1,color='gray'))
-    
-    # Duraklar
-    for i,(r,c) in enumerate(env.locs):
-        ax.text(c, env.grid_size-1-r, env.loc_names[i], ha='center', va='center', fontsize=14)
-    
-    taxi, = ax.plot([], [], 'o', markersize=15, color='yellow')
-    line, = ax.plot([], [])
-    
-    def update(i):
-        x = [p[1] for p in path[:i+1]]
-        y = [env.grid_size-1-p[0] for p in path[:i+1]]
-        line.set_data(x,y)
-        taxi.set_data([path[i][1]], [env.grid_size-1-path[i][0]])
-        return taxi, line
-    
-    anim = FuncAnimation(fig, update, frames=len(path), interval=400)
-    plt.close()
-    return HTML(anim.to_jshtml())
+    test_stats = []
 
-# RUN
+    for tur in range(1, 6):
+        state = env.reset()
+        epochs, total_reward, done = 0, 0, False
+    
+    while not done and epochs < 50:
+        action = np.argmax(q_table[state])
+        next_state, reward, done = env.step(action)
+        
+        # ASCII Dinamik Grid
+        t_row, t_col = (state // (6*7*6)) % 6, (state // (7*6)) % 6
+        grid = "    + - - - - - - - - +\n"
+        for r in range(6):
+            grid += "    | "
+            for c in range(6):
+                char = "."
+                for i, p in enumerate(env.locs):
+                    if (r,c) == p: char = "RGYBKL"[i]
+                if r == t_row and c == t_col:
+                    grid += f"\033[43m\033[30m{char}\033[0m"
+                else: grid += char
+                grid += " | " if ((r<2 and c==1) or (r>3 and c==2)) else " : "
+            grid += "|\n"
+        grid += "    + - - - - - - - - +"
+        
+        clear_output(wait=True)
+        print(f"\033[1;36m[PRO TEST] TUR: {tur}/5 | ADIM: {epochs}\033[0m")
+        print(grid)
+        print(f"\033[1mKonum:\033[0m ({t_row},{t_col}) | \033[1mAksiyon:\033[0m {['Güney','Kuzey','Doğu','Batı','PICKUP','DROPOFF'][action]}")
+        print(f"\033[1mAnlık Ödül:\033[0m {reward} | \033[1mToplam:\033[0m {total_reward + reward}")
+        
+        state, total_reward, epochs = next_state, total_reward + reward, epochs + 1
+        time.sleep(0.2)
 
-env = TaxiEnv()
-agent = QAgent(env)
+    if done:
+        test_stats.append({"Tur": tur, "Toplam Ödül": total_reward, "Adım Sayısı": epochs, "Sonuç": "BAŞARILI"})
+        time.sleep(1)
 
-print("🚀 Eğitim başlıyor...")
-rewards = agent.train()
-plot_rewards(rewards)
-
-print("🎬 Test...")
-path = agent.test()
-animate(env, path)
+    show_pro_dashboard(history_rewards, history_steps, test_stats)
