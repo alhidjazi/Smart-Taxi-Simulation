@@ -118,3 +118,10 @@ from IPython.display import clear_output
         time.sleep(1)
 
     show_pro_dashboard(history_rewards, history_steps, test_stats)
+
+
+📄 Performans ve Analiz Kontrol Paneli:: https://drive.google.com/file/d/1rD071WektDtPoRhxjMWjEgwl7rIOLxS5/view
+
+📄 Grafikler:: https://drive.google.com/file/d/1YBp0VUIQJb75jcEqHQvt0vGSxsL8u6Vd/view
+
+📄 Simülasyon Gif:: https://drive.google.com/file/d/1lA3LVKWnbtTiDwgsZw8yK0x-RGxlc05R/view
